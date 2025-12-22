@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Time API Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        #restResult, #wsResult {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            min-height: 50px;
+        }
+        #restResult {
+            background-color: #e3f2fd;
+            border-left: 4px solid #2196F3;
+        }
+        #wsResult {
+            background-color: #fff3e0;
+            border-left: 4px solid #FF9800;
+        }
+        .status {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .timestamp {
+            color: #666;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Asynchronous Time API Test</h1>
+        
+        <h2>REST API Test</h2>
+        <p>Click the button below to test the REST endpoint. It will wait 3 seconds before responding.</p>
+        <button id="restButton" onclick="testRestAPI()">Get Time via REST API</button>
+        <div id="restResult">
+            <div class="status">Status: Ready</div>
+            <div>Click the button above to test the REST API</div>
+        </div>
+
+        <h2 style="margin-top: 40px;">WebSocket API Test</h2>
+        <p>Click the button below to test the WebSocket endpoint. The connection will be established and you'll receive the time after 3 seconds.</p>
+        <button id="wsConnectButton" onclick="connectWebSocket()">Connect WebSocket</button>
+        <button id="wsSendButton" onclick="sendTimeRequest()" disabled>Request Time via WebSocket</button>
+        <button id="wsDisconnectButton" onclick="disconnectWebSocket()" disabled>Disconnect</button>
+        <div id="wsResult">
+            <div class="status">Status: Not Connected</div>
+            <div>Click "Connect WebSocket" to establish connection</div>
+        </div>
+    </div>
+
+    <script>
+        let stompClient = null;
+        let connected = false;
+
+        function testRestAPI() {
+            const button = document.getElementById('restButton');
+            const resultDiv = document.getElementById('restResult');
+            
+            button.disabled = true;
+            resultDiv.innerHTML = '<div class="status">Status: Requesting...</div><div>Waiting for response (3 seconds delay)...</div>';
+            
+            const startTime = Date.now();
+            
+            fetch('/time')
+                .then(response => response.json())
+                .then(data => {
+                    const endTime = Date.now();
+                    const duration = endTime - startTime;
+                    resultDiv.innerHTML = `
+                        <div class="status">Status: Success</div>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                        <div class="timestamp">Response time: ${duration}ms</div>
+                    `;
+                    button.disabled = false;
+                })
+                .catch(error => {
+                    resultDiv.innerHTML = `
+                        <div class="status">Status: Error</div>
+                        <div>Error: ${error.message}</div>
+                    `;
+                    button.disabled = false;
+                });
+        }
+
+        function connectWebSocket() {
+            const socket = new SockJS('/ws');
+            stompClient = Stomp.over(socket);
+            
+            stompClient.connect({}, function(frame) {
+                connected = true;
+                document.getElementById('wsConnectButton').disabled = true;
+                document.getElementById('wsSendButton').disabled = false;
+                document.getElementById('wsDisconnectButton').disabled = false;
+                
+                const resultDiv = document.getElementById('wsResult');
+                resultDiv.innerHTML = '<div class="status">Status: Connected</div><div>WebSocket connection established. Click "Request Time via WebSocket" to test.</div>';
+                
+                // Subscribe to the time topic
+                stompClient.subscribe('/topic/time', function(message) {
+                    const data = JSON.parse(message.body);
+                    const resultDiv = document.getElementById('wsResult');
+                    resultDiv.innerHTML = `
+                        <div class="status">Status: Received Response</div>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                        <div class="timestamp">Received at: ${new Date().toLocaleString()}</div>
+                    `;
+                });
+            }, function(error) {
+                const resultDiv = document.getElementById('wsResult');
+                resultDiv.innerHTML = `<div class="status">Status: Connection Failed</div><div>Error: ${error}</div>`;
+            });
+        }
+
+        function sendTimeRequest() {
+            if (!connected || !stompClient) {
+                alert('Please connect to WebSocket first');
+                return;
+            }
+            
+            const resultDiv = document.getElementById('wsResult');
+            resultDiv.innerHTML = '<div class="status">Status: Request Sent</div><div>Waiting for response (3 seconds delay)...</div>';
+            
+            // Send message to the server
+            stompClient.send("/app/time", {}, JSON.stringify({}));
+        }
+
+        function disconnectWebSocket() {
+            if (stompClient) {
+                stompClient.disconnect();
+            }
+            connected = false;
+            document.getElementById('wsConnectButton').disabled = false;
+            document.getElementById('wsSendButton').disabled = true;
+            document.getElementById('wsDisconnectButton').disabled = true;
+            
+            const resultDiv = document.getElementById('wsResult');
+            resultDiv.innerHTML = '<div class="status">Status: Disconnected</div><div>WebSocket connection closed.</div>';
+        }
+    </script>
+</body>
+</html>
+
