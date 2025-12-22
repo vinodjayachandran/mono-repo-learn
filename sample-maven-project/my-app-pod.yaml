@@ -1,0 +1,33 @@
+# Save the output of this file and use kubectl create -f to import
+# it into Kubernetes.
+#
+# Created with podman-5.5.2
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    io.kubernetes.cri-o.SandboxID/dreamymahavira: 819022b096c6a0a755000e8e1a23ddab2a79e69541d42fd5d2124ba0802d9d0e
+    io.kubernetes.cri-o.SandboxID/stupefiedishizaka: 819022b096c6a0a755000e8e1a23ddab2a79e69541d42fd5d2124ba0802d9d0e
+  creationTimestamp: "2025-12-15T11:56:36Z"
+  labels:
+    app: my-app-pod
+  name: my-app-pod
+spec:
+  containers:
+  - args:
+    - redis-server
+    image: docker.io/library/redis:latest
+    name: stupefiedishizaka
+    ports:
+    - containerPort: 8080
+      hostPort: 9090
+    volumeMounts:
+    - mountPath: /data
+      name: fd3521f66d9da33529092bf05499a364353627b195ad84f97009cbce1aab8ddc-pvc
+  - image: localhost/sample-maven-project:latest
+    name: dreamymahavira
+  volumes:
+  - name: fd3521f66d9da33529092bf05499a364353627b195ad84f97009cbce1aab8ddc-pvc
+    persistentVolumeClaim:
+      claimName: fd3521f66d9da33529092bf05499a364353627b195ad84f97009cbce1aab8ddc
+
