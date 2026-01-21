@@ -4,6 +4,7 @@ on:
   push: 
     tags:
       - 'sample-maven-project/v*'
+  workflow_dispatch:
 
 permissions: 
   contents: write
