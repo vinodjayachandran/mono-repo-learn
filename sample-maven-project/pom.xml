@@ -81,4 +81,10 @@
     <url>https://github.com/vinodjayachandran/mono-repo-learn</url>
     <tag>sample-maven-project/v1.0.1</tag>
   </scm>
+  <distributionManagement>
+    <repository>
+      <id>local-repo</id>
+      <url>file://${project.build.directory}/mvn-repo</url>
+    </repository>
+  </distributionManagement>
 </project>
