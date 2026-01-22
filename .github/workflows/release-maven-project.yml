@@ -14,6 +14,7 @@ on:
 
 permissions:
   contents: write
+  packages: write
 
 jobs:
   release:
@@ -74,6 +75,22 @@ jobs:
             ```
         env: 
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: sample-maven-project
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/sample-maven-project:${{ inputs.version }}
+            ghcr.io/${{ github.repository }}/sample-maven-project:latest
           
       - name: Update pom.xml to next SNAPSHOT version
         run: |
