@@ -1,0 +1,35 @@
+package com.example.controller;
+
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/redis")
+public class RedisController {
+
+    private final StringRedisTemplate redisTemplate;
+
+    public RedisController(StringRedisTemplate redisTemplate) {
+        this.redisTemplate = redisTemplate;
+    }
+
+    @PostMapping("/add")
+    public String add(@RequestParam String key, @RequestParam String value) {
+        redisTemplate.opsForValue().set(key, value);
+        return "Key added";
+    }
+
+    @PutMapping("/update")
+    public String update(@RequestParam String key, @RequestParam String value) {
+        if (Boolean.TRUE.equals(redisTemplate.hasKey(key))) {
+            redisTemplate.opsForValue().set(key, value);
+            return "Key updated";
+        }
+        return "Key not found";
+    }
+
+    @GetMapping("/get")
+    public String get(@RequestParam String key) {
+        return redisTemplate.opsForValue().get(key);
+    }
+}
