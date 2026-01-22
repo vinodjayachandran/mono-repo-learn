@@ -56,12 +56,22 @@ jobs:
           cd sample-maven-project
           mvn clean package
           
-      - name: Create GitHub Release
+      - name: Create Release with Auto-Generated Notes
         uses: softprops/action-gh-release@v1
         with:
           tag_name: sample-maven-project/v${{ inputs.version }}
           files: sample-maven-project/target/*.jar
           generate_release_notes: true
+          body: |
+            ## Maven Spring Boot Application Release
+            
+            ### 📦 Artifacts
+            - `sample-maven-project-${{ inputs.version }}.jar`
+            
+            ### 🚀 Installation
+            ```bash
+            java -jar sample-maven-project-*.jar
+            ```
         env: 
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           
