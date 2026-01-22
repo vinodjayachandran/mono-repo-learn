@@ -61,17 +61,28 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: sample-maven-project/v${{ inputs.version }}
-          files: sample-maven-project/target/*.jar
+          files: |
+            sample-maven-project/target/*.jar
+            sample-maven-project/docker-compose.yml
           generate_release_notes: true
           body: |
             ## Maven Spring Boot Application Release
             
             ### 📦 Artifacts
             - `sample-maven-project-${{ inputs.version }}.jar`
+            - `docker-compose.yml`
             
             ### 🚀 Installation
+            
+            #### Option 1: Java (Jar)
             ```bash
             java -jar sample-maven-project-*.jar
+            ```
+            
+            #### Option 2: Docker Compose
+            Download `docker-compose.yml` and run:
+            ```bash
+            docker-compose up
             ```
         env: 
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
