@@ -75,6 +75,7 @@ jobs:
             ### 🚀 Installation
             
             #### Option 1: Java (Jar)
+            _Requires Redis running on port 6379_
             ```bash
             java -jar sample-maven-project-*.jar
             ```
