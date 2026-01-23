@@ -19,6 +19,9 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sample-maven-project
     steps:
       - uses: actions/checkout@v4
         with:
@@ -35,15 +38,18 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
+      - name: Run Tests
+        run: |
+          mvn test
+          
       - name:  Update pom.xml to release version
         run: |
-          cd sample-maven-project
           mvn versions:set -DnewVersion=${{ inputs.version }}
           mvn versions:commit
           
       - name:  Commit release version
         run: |
-          git add sample-maven-project/pom.xml
+          git add pom.xml
           git commit -m "Release: sample-maven-project v${{ inputs.version }}"
           git push origin main
           
@@ -54,7 +60,6 @@ jobs:
           
       - name:  Build with Maven
         run: |
-          cd sample-maven-project
           mvn clean package
           
       - name: Create Release with Auto-Generated Notes
@@ -98,7 +103,7 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-          context: sample-maven-project
+          context: .
           push: true
           tags: |
             ghcr.io/${{ github.repository }}/sample-maven-project:${{ inputs.version }}
@@ -106,12 +111,11 @@ jobs:
           
       - name: Update pom.xml to next SNAPSHOT version
         run: |
-          cd sample-maven-project
           mvn versions:set -DnewVersion=${{ inputs.next_version }}-SNAPSHOT
           mvn versions:commit
           
       - name: Commit next SNAPSHOT version
         run: |
-          git add sample-maven-project/pom.xml
+          git add pom.xml
           git commit -m "Prepare for next development iteration:  ${{ inputs.next_version }}-SNAPSHOT"
           git push origin main
