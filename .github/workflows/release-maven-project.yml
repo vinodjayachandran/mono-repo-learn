@@ -103,7 +103,7 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: sample-maven-project
           push: true
           tags: |
             ghcr.io/${{ github.repository }}/sample-maven-project:${{ inputs.version }}
