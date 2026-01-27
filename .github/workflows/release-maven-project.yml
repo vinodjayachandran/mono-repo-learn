@@ -108,6 +108,34 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}/sample-maven-project:${{ inputs.version }}
             ghcr.io/${{ github.repository }}/sample-maven-project:latest
+
+      - name: Rollback on Failure
+        if: failure()
+        run: |
+          echo "Workflow failed. Starting rollback..."
+          
+          # Configure Git (needed if previous steps failed before config or if valid session lost?)
+          # Actually "Configure Git" step 36 should have run.
+          
+          git pull
+          
+          # Delete the tag locally and remotely if it exists
+          if git rev-parse "sample-maven-project/v${{ inputs.version }}" >/dev/null 2>&1; then
+             git tag -d "sample-maven-project/v${{ inputs.version }}"
+             git push --delete origin "sample-maven-project/v${{ inputs.version }}" || echo "Remote tag not found or already deleted"
+          fi
+          
+          # Revert the last commit if it matches the release commit message
+          LAST_MSG=$(git log -1 --pretty=%B)
+          EXPECTED_MSG="Release: sample-maven-project v${{ inputs.version }}"
+          
+          if [[ "$LAST_MSG" == *"$EXPECTED_MSG"* ]]; then
+             git revert HEAD --no-edit
+             git push origin main
+             echo "Reverted release commit."
+          else
+             echo "Last commit does not match release message. Skipping revert."
+          fi
           
       - name: Update pom.xml to next SNAPSHOT version
         run: |
