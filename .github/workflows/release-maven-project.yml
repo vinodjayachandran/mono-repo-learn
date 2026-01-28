@@ -22,6 +22,8 @@ jobs:
     defaults:
       run:
         working-directory: sample-maven-project
+    env:
+      K8S_APP_IMAGE: ghcr.io/vinodjayachandran/mono-repo-learn/sample-maven-project:latest
     steps:
       - uses: actions/checkout@v4
         with:
@@ -109,8 +111,50 @@ jobs:
             ghcr.io/${{ github.repository }}/sample-maven-project:${{ inputs.version }}
             ghcr.io/${{ github.repository }}/sample-maven-project:latest
 
+      - name: Create kind cluster
+        uses: helm/kind-action@v1.10.0
+        with:
+          cluster_name: sample-maven-project
+
+      - name: Build image for kind
+        run: |
+          docker build -t "$K8S_APP_IMAGE" .
+
+      - name: Load image into kind
+        run: |
+          kind load docker-image "$K8S_APP_IMAGE" --name sample-maven-project
+
+      - name: Apply k8s manifests
+        run: |
+          kubectl apply -f k8s/namespace.yaml
+          kubectl apply -f k8s/redis-pod.yaml -f k8s/redis-service.yaml
+          kubectl apply -f k8s/app-pod.yaml -f k8s/app-service.yaml
+
+      - name: Wait for pods to be ready
+        run: |
+          kubectl -n sample-maven-project wait --for=condition=Ready pod -l app=redis --timeout=180s
+          kubectl -n sample-maven-project wait --for=condition=Ready pod -l app=sample-maven-project --timeout=180s
+
+      - name: Verify actuator endpoints
+        run: |
+          set -euo pipefail
+          kubectl -n sample-maven-project port-forward svc/sample-maven-project 8080:8080 > /tmp/port-forward.log 2>&1 &
+          PORT_FORWARD_PID=$!
+          trap "kill $PORT_FORWARD_PID" EXIT
+          for i in {1..30}; do
+            if curl -fsS http://localhost:8080/actuator/health; then
+              break
+            fi
+            sleep 2
+          done
+          curl -fsS http://localhost:8080/actuator/health
+          curl -fsS http://localhost:8080/actuator/info
+          curl -fsS http://localhost:8080/ping
+
       - name: Rollback on Failure
         if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "Workflow failed. Starting rollback..."
           
@@ -118,11 +162,24 @@ jobs:
           # Actually "Configure Git" step 36 should have run.
           
           git pull
+
+          OWNER="${{ github.repository_owner }}"
+          REPO="${{ github.repository }}"
+          IMAGE="ghcr.io/${REPO}/sample-maven-project"
+          PKG="sample-maven-project"
+          CURRENT_TAG="${{ inputs.version }}"
+          CURRENT_REF="sample-maven-project/v${{ inputs.version }}"
+
+          PRIOR_REF=$(git tag -l "sample-maven-project/v*" --sort=-v:refname | grep -v "$CURRENT_REF" | head -n1 || true)
+          PRIOR_TAG=""
+          if [ -n "$PRIOR_REF" ]; then
+            PRIOR_TAG="${PRIOR_REF#sample-maven-project/v}"
+          fi
           
           # Delete the tag locally and remotely if it exists
-          if git rev-parse "sample-maven-project/v${{ inputs.version }}" >/dev/null 2>&1; then
-             git tag -d "sample-maven-project/v${{ inputs.version }}"
-             git push --delete origin "sample-maven-project/v${{ inputs.version }}" || echo "Remote tag not found or already deleted"
+          if git rev-parse "$CURRENT_REF" >/dev/null 2>&1; then
+             git tag -d "$CURRENT_REF"
+             git push --delete origin "$CURRENT_REF" || echo "Remote tag not found or already deleted"
           fi
           
           # Revert the last commit if it matches the release commit message
@@ -136,7 +193,36 @@ jobs:
           else
              echo "Last commit does not match release message. Skipping revert."
           fi
-          
+
+          # Delete GitHub Release if it exists
+          gh release delete "$CURRENT_REF" -y || echo "Release not found or already deleted."
+
+          # Remove failed GHCR tag (version)
+          delete_ghcr_tag() {
+            local tag="$1"
+            local endpoint
+            for endpoint in "/users/${OWNER}/packages/container/${PKG}/versions" "/orgs/${OWNER}/packages/container/${PKG}/versions"; do
+              versions=$(gh api -H "Accept: application/vnd.github+json" "$endpoint" --paginate 2>/dev/null) || continue
+              id=$(echo "$versions" | jq -r --arg TAG "$tag" '.[] | select(.metadata.container.tags[]? == $TAG) | .id' | head -n1)
+              if [ -n "$id" ] && [ "$id" != "null" ]; then
+                gh api -X DELETE -H "Accept: application/vnd.github+json" "${endpoint}/${id}" && return 0
+              fi
+            done
+            return 0
+          }
+
+          delete_ghcr_tag "$CURRENT_TAG"
+
+          # Restore latest to prior stable tag (if available)
+          if [ -n "$PRIOR_TAG" ]; then
+            echo "Restoring latest to prior stable tag ${PRIOR_TAG}..."
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+            docker pull "${IMAGE}:${PRIOR_TAG}"
+            docker tag "${IMAGE}:${PRIOR_TAG}" "${IMAGE}:latest"
+            docker push "${IMAGE}:latest"
+          else
+            echo "No prior stable tag found. Skipping latest restore."
+          fi
       - name: Update pom.xml to next SNAPSHOT version
         run: |
           mvn versions:set -DnewVersion=${{ inputs.next_version }}-SNAPSHOT
