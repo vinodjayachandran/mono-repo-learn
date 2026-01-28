@@ -14,6 +14,12 @@ A Spring Boot application demonstrating REST APIs and WebSocket capabilities wit
 
 ## API Endpoints
 
+### API Documentation (Swagger UI)
+```
+Swagger UI: http://localhost:8080/swagger-ui/index.html
+Raw OpenAPI spec: http://localhost:8080/v3/api-docs
+```
+
 ### Ping Endpoint
 ```
 GET http://localhost:8080/ping
@@ -47,6 +53,13 @@ Response (after 3-second delay):
 ### Health Check
 ```
 GET http://localhost:8080/actuator/health
+```
+
+### Redis Endpoints
+```
+POST http://localhost:8080/redis/add?key=<key>&value=<value>
+PUT  http://localhost:8080/redis/update?key=<key>&value=<value>
+GET  http://localhost:8080/redis/get?key=<key>
 ```
 
 ## Running Locally
