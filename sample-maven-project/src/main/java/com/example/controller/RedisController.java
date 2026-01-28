@@ -1,5 +1,6 @@
 package com.example.controller;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
@@ -9,7 +10,8 @@ public class RedisController {
 
     private final StringRedisTemplate redisTemplate;
 
-    public RedisController(StringRedisTemplate redisTemplate) {
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "Spring injects and manages the mutable bean safely.")
+    public RedisController(final StringRedisTemplate redisTemplate) {
         this.redisTemplate = redisTemplate;
     }
 
