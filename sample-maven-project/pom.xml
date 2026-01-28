@@ -11,7 +11,7 @@
   <groupId>com.example</groupId>
   <artifactId>sample-maven-project</artifactId>
   <packaging>jar</packaging>
-  <version>1.0.10</version>
+  <version>1.0.11-SNAPSHOT</version>
   <name>sample-maven-project</name>
   <description>Spring Boot application with ping endpoint</description>
   
