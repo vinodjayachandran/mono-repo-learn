@@ -6,6 +6,8 @@ metadata:
   labels:
     app: sample-maven-project
 spec:
+  imagePullSecrets:
+    - name: ghcr-credentials
   containers:
     - name: app
       image: ghcr.io/vinodjayachandran/mono-repo-learn/sample-maven-project:latest

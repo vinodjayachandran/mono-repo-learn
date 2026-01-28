@@ -14,13 +14,12 @@ flowchart TD
   J --> K[Login to GHCR]
   K --> L[Build and push Docker image]
   L --> M[Create kind cluster]
-  M --> N[Build image for kind]
-  N --> O[Load image into kind]
-  O --> P[Apply k8s manifests]
-  P --> Q[Wait for pods ready]
-  Q --> R[Port forward and run E2E tests]
-  R --> S{Failure}
-  S -- yes --> T[Rollback cleanup and restore latest]
-  S -- no --> U[Set next snapshot version]
-  U --> V[Commit and push snapshot]
+  M --> N[Create GHCR pull secret]
+  N --> O[Apply k8s manifests]
+  O --> P[Wait for pods ready]
+  P --> Q[Port forward and run E2E tests]
+  Q --> R{Failure}
+  R -- yes --> S[Rollback cleanup and restore latest]
+  R -- no --> T[Set next snapshot version]
+  T --> U[Commit and push snapshot]
 ```

@@ -116,17 +116,14 @@ jobs:
         with:
           cluster_name: sample-maven-project
 
-      - name: Build image for kind
-        run: |
-          docker build -t "$K8S_APP_IMAGE" .
-
-      - name: Load image into kind
-        run: |
-          kind load docker-image "$K8S_APP_IMAGE" --name sample-maven-project
-
       - name: Apply k8s manifests
         run: |
           kubectl apply -f k8s/namespace.yaml
+          kubectl -n sample-maven-project delete secret ghcr-credentials --ignore-not-found
+          kubectl -n sample-maven-project create secret docker-registry ghcr-credentials \
+            --docker-server=ghcr.io \
+            --docker-username="${{ github.actor }}" \
+            --docker-password="${{ secrets.GITHUB_TOKEN }}"
           kubectl apply -f k8s/redis-pod.yaml -f k8s/redis-service.yaml
           kubectl apply -f k8s/app-pod.yaml -f k8s/app-service.yaml
 
