@@ -135,7 +135,7 @@ jobs:
           kubectl -n sample-maven-project wait --for=condition=Ready pod -l app=redis --timeout=180s
           kubectl -n sample-maven-project wait --for=condition=Ready pod -l app=sample-maven-project --timeout=180s
 
-      - name: Verify actuator endpoints
+      - name: Run E2E tests
         run: |
           set -euo pipefail
           kubectl -n sample-maven-project port-forward svc/sample-maven-project 8080:8080 > /tmp/port-forward.log 2>&1 &
@@ -147,9 +147,7 @@ jobs:
             fi
             sleep 2
           done
-          curl -fsS http://localhost:8080/actuator/health
-          curl -fsS http://localhost:8080/actuator/info
-          curl -fsS http://localhost:8080/ping
+          mvn -Dtest=RedisE2ETest -De2e.baseUrl=http://localhost:8080 test
 
       - name: Rollback on Failure
         if: failure()
